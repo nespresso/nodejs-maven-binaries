@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Updates nodejs-distributions to the given nodejs version.
 # requires: sh, curl, tar (only tested on macOS).
@@ -32,24 +32,32 @@ downloadNodeJs(){
 
   echo "Extracting node binary from tarfile.."
 
-  tar zxf nodejs.tar.gz $filename/bin/node || error_exit "Error while extracting node binary from downloaded .tar.gz"
+  tar zxf nodejs.tar.gz || error_exit "Error while extracting node binary from downloaded .tar.gz"
   cp $filename/bin/node ../node || error_exit "Error while copying node binary"
+  cp -r $filename/lib .. || error_exit "Error while copying node_modules"
   cd ..
   rm -Rf temp_tar || error_exit "Error while cleaning up download directory"
 }
 
-## A non-MSI distribution of node for Windows is only available as a single node.exe file
 downloadAndExtractNodeJsWindows(){
   local platform=$1
 
-  local downloadUrl="$DOWNLOAD_URL_PREFIX/node.exe"
-  if [ "$platform" == "win-x64" ]
-  then
-    downloadUrl="$DOWNLOAD_URL_PREFIX/x64/node.exe"
-  fi
+  local filename="node-v$NODEJS_VERSION-$platform"
+  local downloadUrl="$DOWNLOAD_URL_PREFIX/$filename.zip"
 
   echo "downloading node.exe $downloadUrl"
-  curl -# -f -o node.exe $downloadUrl || error_exit "Error while downloading $downloadUrl"
+  rm -f temp_tar
+  mkdir temp_tar
+  cd temp_tar
+
+  curl -# -f -o node.zip $downloadUrl || error_exit "Error while downloading $downloadUrl"
+  unzip -qq node.zip || error_exit "Cannot unzip windows version"
+  cp $filename/node.exe ../node.exe || error_exit "Error while copying node binary"
+  cp -r $filename/node_modules .. || error_exit "Error while copying node_modules"
+
+  rm -r $filename
+  cd ..
+  rm -Rf temp_tar || error_exit "Error while cleaning up download directory"
 }
 
 
@@ -75,7 +83,6 @@ if [ -z "$1" ]
     error_exit "Please supply a nodejs version to download"
 fi
 
-updateDistDirectory "macos-x86" "darwin-x86"
 updateDistDirectory "macos-x64" "darwin-x64"
 
 updateDistDirectory "linux-x86" "linux-x86"
